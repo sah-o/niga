@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from discord.ui import Button, View, Select
+from discord.ui import Button, View
 import io
 import barcode
 from barcode.writer import ImageWriter
@@ -51,20 +51,22 @@ async def on_message(message):
 
 async def show_main_menu(message):
     """Display the main menu with options."""
+    # Create an embed for the banner
     embed = discord.Embed(title="Main Menu", color=0x00ff00)
     embed.set_image(url="https://mega.nz/file/mBQjgYjC#cl4RZSpbsvuD5w5TcXsRQjkKYvd088nOcLeBxUS3xjo")
     embed.add_field(name="Commands", value="Select an option below:", inline=False)
 
+    # Create a view with buttons
     view = View()
 
     # Button for Generate Barcodes
     generate_button = Button(label="Generate Barcodes", style=discord.ButtonStyle.primary)
-    generate_button.callback = lambda interaction: show_barcode_categories(interaction)
+    generate_button.callback = lambda interaction: handle_generate_barcodes(interaction)
     view.add_item(generate_button)
 
     # Button for Promo Codes
     promo_button = Button(label="Promo Codes", style=discord.ButtonStyle.secondary)
-    promo_button.callback = lambda interaction: show_promo_codes(interaction)
+    promo_button.callback = lambda interaction: handle_promo_codes(interaction)
     view.add_item(promo_button)
 
     # Button for New Category
@@ -77,13 +79,15 @@ async def show_main_menu(message):
     guide_button.callback = lambda interaction: handle_add_guide(interaction)
     view.add_item(guide_button)
 
+    # Send the embed with buttons
     await message.channel.send(embed=embed, view=view)
 
-async def show_barcode_categories(interaction):
-    """Display barcode categories."""
-    view = View()
+async def handle_generate_barcodes(interaction):
+    """Handle the Generate Barcodes button."""
+    await interaction.response.send_message("**Select a store to generate barcode:**")
 
-    # Dropdown for barcode categories
+    # Create a dropdown for store selection
+    view = View()
     select = Select(placeholder="Select a store", options=[
         discord.SelectOption(label="MS", value="ms"),
         discord.SelectOption(label="Waitrose", value="waitrose"),
@@ -91,13 +95,13 @@ async def show_barcode_categories(interaction):
         discord.SelectOption(label="Savers", value="savers"),
         discord.SelectOption(label="Sainsburys", value="sainsburys")
     ])
-    select.callback = lambda i: handle_barcode_generation(i, select.values[0])
+    select.callback = lambda i: handle_store_selection(i, select.values[0])
     view.add_item(select)
 
-    await interaction.response.send_message("**Select a store to generate barcode:**", view=view)
+    await interaction.followup.send(view=view)
 
-async def handle_barcode_generation(interaction, store):
-    """Handle barcode generation for the selected store."""
+async def handle_store_selection(interaction, store):
+    """Handle store selection for barcode generation."""
     await interaction.response.send_message(f"Enter the barcode and price for {store} (e.g., `12345678 100`):")
 
     def check(m):
@@ -146,8 +150,8 @@ def generate_barcode_image(code):
     img_io.seek(0)
     return img_io
 
-async def show_promo_codes(interaction):
-    """Display all promo codes and their cooldowns."""
+async def handle_promo_codes(interaction):
+    """Handle the Promo Codes button."""
     if not COOLDOWN_TIMES:
         await interaction.response.send_message("❌ No promo codes available.")
         return
@@ -164,7 +168,7 @@ async def show_promo_codes(interaction):
     await interaction.response.send_message(embed=embed)
 
 async def handle_new_category(interaction):
-    """Handle adding a new category."""
+    """Handle the New Category button."""
     await interaction.response.send_message("Enter the category name and cooldown in hours (e.g., `new_category 24`):")
 
     def check(m):
@@ -184,7 +188,7 @@ async def handle_new_category(interaction):
         await interaction.followup.send(f"❌ Error: {str(e)}")
 
 async def handle_add_guide(interaction):
-    """Handle adding a guide for a category."""
+    """Handle the Add Guide button."""
     await interaction.response.send_message("Enter the category name and guide (e.g., `new_category This is a guide.`):")
 
     def check(m):
